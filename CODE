@@ -1,0 +1,139 @@
+import mido
+from mido import Message, MidiFile, MidiTrack
+from collections import deque
+import time
+
+##list available MIDI ports
+print("Available MIDI inputs:")
+for name in mido.get_input_names():
+    print(f"  {name}")
+
+print("Available MIDI outputs:")
+for name in mido.get_output_names():
+    print(f"  {name}")
+
+
+##Set up the MIDI ports
+inport_name = 'PHARA-O MINI 0'
+outport_name = 'PHARA-O MINI 1'
+
+inport = mido.open_input(inport_name)
+outport = mido.open_output(outport_name)
+
+while True:
+    ##options screen
+    print("Options:")
+    print("1. Print incoming MIDI messages")
+    print("2. Send test MIDI message")
+    print("3. Record MIDI messages to a file")
+    print("4. Play back recorded MIDI messages from a file")
+    print("5. Exit")
+
+    option = int(input("Select an option: "))
+
+    if option == 1:
+
+        ##print incoming MIDI messages (using background callback)
+        print("Listening for incoming MIDI messages. Press Ctrl+C to exit.")
+        try:
+            while True:
+                for msg in inport:
+                    print(msg)
+        except KeyboardInterrupt:
+            pass
+
+    elif option == 2:
+        
+        ##send test message
+        msg = mido.Message('note_on', note=60, velocity=127)
+        outport.send(msg)
+        print("Test message sent: ", msg)
+        time.sleep(1)  # Hold the note for 1 second
+        msg = mido.Message('note_off', note=60, velocity=0)
+        outport.send(msg)
+
+    elif option == 3:
+            ##record MIDI messages to a file, deriving tempo from MIDI clock
+            mid = MidiFile(type=0)  # Type 0 = single track
+            track = MidiTrack()
+            mid.tracks.append(track)
+
+            # Start with a default tempo (will be updated from MIDI clock)
+            default_bpm = 120.0
+            last_written_bpm = default_bpm
+            # Write an initial tempo meta message
+            tempo_msg = mido.MetaMessage('set_tempo', tempo=mido.bpm2tempo(int(default_bpm)))
+            track.append(tempo_msg)
+
+            # For tempo estimation from MIDI clock (24 clocks per quarter note)
+            clock_intervals = deque(maxlen=48)
+            last_clock_time = None
+            bpm = default_bpm
+
+            print("Recording MIDI messages. Press Ctrl+C to stop.")
+            start_time = time.time()
+            last_time = start_time
+            try:
+                while True:
+                    for msg in inport:
+                        current_time = time.time()
+
+                        # Handle MIDI realtime clock messages to estimate tempo
+                        if msg.type == 'clock':
+                            if last_clock_time is not None:
+                                interval = current_time - last_clock_time
+                                # store interval between clock ticks
+                                clock_intervals.append(interval)
+                                if len(clock_intervals) >= 6:
+                                    avg_interval = sum(clock_intervals) / len(clock_intervals)
+                                    # avg_interval is seconds per MIDI clock tick; 24 ticks = quarter note
+                                    beats_per_second = 1.0 / (avg_interval * 24.0)
+                                    bpm = beats_per_second * 60.0
+                                    # write a tempo meta message only when tempo changes noticeably
+                                    if abs(bpm - last_written_bpm) > 0.5:
+                                        tempo_msg = mido.MetaMessage('set_tempo', tempo=mido.bpm2tempo(int(bpm)))
+                                        track.append(tempo_msg)
+                                        last_written_bpm = bpm
+                            last_clock_time = current_time
+                            # do not record realtime clock messages into the MIDI track
+                            continue
+
+                        # Filter out other realtime messages not allowed in MIDI files
+                        if msg.type in ['start', 'stop', 'continue', 'active_sensing']:
+                            continue
+
+                        # Non-realtime MIDI messages: compute delta and convert to ticks using current bpm
+                        delta_time = current_time - last_time
+                        ticks_per_second = mid.ticks_per_beat * (bpm / 60.0)
+                        ticks = int(delta_time * ticks_per_second)
+
+                        track.append(msg.copy(time=ticks))
+                        last_time = current_time
+                        elapsed = current_time - start_time
+                        print(f"Recorded: {msg} at {elapsed:.2f} seconds (est. BPM={bpm:.1f})")
+            except KeyboardInterrupt:
+                pass
+            outport.panic()  # Send all notes off to prevent hanging notes
+            mid.save('recorded.mid')
+            print("MIDI messages recorded to 'recorded.mid'.")
+            
+
+
+    elif option == 4:
+        ##play back recorded MIDI messages from a file
+        mid = MidiFile('recorded.mid')
+        print("Playing back recorded MIDI messages from 'recorded.mid'.")
+        for msg in mid.play():
+            outport.send(msg)
+            print(f"Sent: {msg}")
+        outport.panic()  # Send all notes off to prevent hanging notes
+
+    elif option == 5:
+        break
+
+
+
+outport.panic()
+inport.close()
+outport.close()
+print("Ports closed, all notes off sent.")

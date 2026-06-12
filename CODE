@@ -3,7 +3,7 @@ from mido import Message, MidiFile, MidiTrack
 from collections import deque
 import time
 
-##list available MIDI ports
+#list available MIDI ports
 print("Available MIDI inputs:")
 for name in mido.get_input_names():
     print(f"  {name}")
@@ -13,27 +13,29 @@ for name in mido.get_output_names():
     print(f"  {name}")
 
 
-##Set up the MIDI ports
-inport_name = 'YOUR MIDI HERE'
-outport_name = 'YOUR MIDI HERE'
+#Set up the MIDI ports
+inport_name = 'PHARA-O MINI 0'
+outport_name = 'PHARA-O MINI 1'
 
 inport = mido.open_input(inport_name)
 outport = mido.open_output(outport_name)
 
 while True:
-    ##options screen
-    print("Options:")
-    print("1. Print incoming MIDI messages")
-    print("2. Send test MIDI message")
-    print("3. Record MIDI messages to a file")
-    print("4. Play back recorded MIDI messages from a file")
-    print("5. Exit")
+    #options screen
+    print(
+        "Options:\n"
+        "1. Print incoming MIDI messages\n"
+        "2. Send test MIDI message\n"
+        "3. Record MIDI messages to a file\n"
+        "4. Play back recorded MIDI messages from a file\n"
+        "5. Exit"
+    )
 
     option = int(input("Select an option: "))
 
     if option == 1:
 
-        ##print incoming MIDI messages (using background callback)
+        #print incoming MIDI messages (using background callback)
         print("Listening for incoming MIDI messages. Press Ctrl+C to exit.")
         try:
             while True:
@@ -44,7 +46,7 @@ while True:
 
     elif option == 2:
         
-        ##send test message
+        #send test message
         msg = mido.Message('note_on', note=60, velocity=127)
         outport.send(msg)
         print("Test message sent: ", msg)
@@ -53,7 +55,7 @@ while True:
         outport.send(msg)
 
     elif option == 3:
-            ##record MIDI messages to a file, deriving tempo from MIDI clock
+            #record MIDI messages to a file, deriving tempo from MIDI clock
             mid = MidiFile(type=0)  # Type 0 = single track
             track = MidiTrack()
             mid.tracks.append(track)
@@ -120,7 +122,7 @@ while True:
 
 
     elif option == 4:
-        ##play back recorded MIDI messages from a file
+        #play back recorded MIDI messages from a file
         mid = MidiFile('recorded.mid')
         print("Playing back recorded MIDI messages from 'recorded.mid'.")
         for msg in mid.play():

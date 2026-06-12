@@ -7,3 +7,6 @@ Runs in the terminal
 
 Notes:
 BPM Code is bad, sorry
+
+TODO:
+Add UI

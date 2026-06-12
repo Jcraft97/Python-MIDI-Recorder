@@ -14,8 +14,8 @@ for name in mido.get_output_names():
 
 
 ##Set up the MIDI ports
-inport_name = 'PHARA-O MINI 0'
-outport_name = 'PHARA-O MINI 1'
+inport_name = 'YOUR MIDI HERE'
+outport_name = 'YOUR MIDI HERE'
 
 inport = mido.open_input(inport_name)
 outport = mido.open_output(outport_name)

@@ -1,7 +1,8 @@
 Python midi recorder
 
-Runs in the termial
+Uses MIDO
+Runs in the terminal
 
 
-Notes
+Notes:
 BPM Code is bad, sorry
